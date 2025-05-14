@@ -1,4 +1,4 @@
-# SequentialBlobIntegrator
+# Sequential Blob Integrator Function App
 
 This C# project can be used for integration. Sequential updates are enforced by saving payloads to blobs within transactions. No ServiceBus queues are needed (for first-in-first-out), as long as the blob is saved with a ticks timestamp for its name within an originating transaction. For example, when outbound integration is needed for D365 CRM, a plugin can run with a synchronous post-operation that saves a blob within the transaction for the row update or create. This means that the blobs will be ordered correctly sequentially by name. All that the the D365 plugin must do is to save the blob with the payload with the correct name. An Azure Function blob trigger will start a Durable Function that will process the blobs sequentially (by the set key).
 
