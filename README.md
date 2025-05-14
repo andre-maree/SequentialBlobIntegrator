@@ -18,4 +18,4 @@ local.settings.json Config:
 - "Container": "integration-test", // set the blob container to use
 - "MaxConcurrentOutboundCalls": "4" // max concurrent outbound calls
 
-Use Azure Storage Explorer and Azurerite for local development. Azure Storage Explorer can be downloaded, and Azurite should be included within Visual Sudio.
+Use Azure Storage Explorer and Azurerite for local development. Azure Storage Explorer can be downloaded, and Azurite is included within Visual Sudio or can also be downloaded.
