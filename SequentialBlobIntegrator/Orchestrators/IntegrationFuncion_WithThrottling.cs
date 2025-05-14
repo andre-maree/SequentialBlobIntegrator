@@ -1,12 +1,4 @@
-using Azure.Storage.Blobs;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Logging;
 using SequentialBlobIntegrator.Models;
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace SequentialBlobIntegrator
 { 
@@ -84,7 +76,7 @@ namespace SequentialBlobIntegrator
             string token;
             //string trace = "1";
 
-            string globalMaxConcurrent = "MyGlobalLock";
+            string globalMaxConcurrent = "MaxConcurrentOutboundCalls";
 
             EntityId globalcountid;
 

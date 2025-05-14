@@ -1,6 +1,4 @@
-﻿using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs;
-using SequentialBlobIntegrator.Models;
+﻿using SequentialBlobIntegrator.Models;
 
 namespace SequentialBlobIntegrator
 {

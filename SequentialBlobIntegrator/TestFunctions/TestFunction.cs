@@ -1,15 +1,3 @@
-using System;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Azure.Storage.Blobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Net.Http.Json;
 using SequentialBlobIntegrator.Models;
 
 namespace SequentialBlobIntegrator.TestFunctions
@@ -37,6 +25,7 @@ namespace SequentialBlobIntegrator.TestFunctions
             bool togle = false;
             List<Task> li = new();
 
+            // create some blobs with timestamp ticks
             for (int i = 0; i < 2; i++)
             {
                 TestJsonContent content = new()
