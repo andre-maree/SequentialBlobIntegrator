@@ -1,4 +1,18 @@
-﻿using SequentialBlobIntegrator.Models;
+﻿using Azure.Storage.Blobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.WebJobs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using System.Net.Http;
+using Azure.Storage.Blobs.Models;
+using Azure;
+using System.IO;
+using Newtonsoft.Json;
+using System.Text;
+using SequentialBlobIntegrator.Models;
 
 namespace SequentialBlobIntegrator
 {
