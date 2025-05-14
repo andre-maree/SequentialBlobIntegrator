@@ -13,6 +13,8 @@ using System.IO;
 using Newtonsoft.Json;
 using System.Text;
 using SequentialBlobIntegrator.Models;
+using Microsoft.Azure.WebJobs.Extensions.Http;
+using System.Net.Http.Json;
 
 namespace SequentialBlobIntegrator
 {
@@ -28,13 +30,39 @@ namespace SequentialBlobIntegrator
             httpClient = httpClientFactory.CreateClient();
         }
 
+        [FunctionName(nameof(CreateBlob))]
+        public async Task<HttpResponseMessage> CreateBlob(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestMessage req,
+            [DurableClient] IDurableOrchestrationClient starter,
+            ILogger log)
+        {
+            IntegrationPayload input = await req.Content.ReadFromJsonAsync<IntegrationPayload>();
+
+            string ticks = (input.TicksStamp + 1000000000000000000).ToString();
+
+            string blobname = $"{input.Key}/{ticks}";
+
+            await blobContainerClient.UploadBlobAsync(blobname, BinaryData.FromObjectAsJson(input.IntegrationHttpRequest));
+
+            string content = string.Empty;
+
+            return new HttpResponseMessage()
+            {
+                Content = new StringContent(content)
+            };
+        }
+
         [FunctionName("BlobTriggerCSharp")]
         public static async Task Run([BlobTrigger("%Container%/{name}")] Stream myBlob, string name, [DurableClient] IDurableOrchestrationClient starter,
             ILogger log)
         {
             string[] arr = name.Split('/');
 
+            // with throttling
             await starter.StartNewAsync(nameof(IntegrationFuncion_WithThrottling.MainThrottledOrchestrator), $"{arr[0]}|{arr[1]}");
+            
+            // with no throttling
+            //await starter.StartNewAsync(nameof(IntegrationFuncion_NoThrottling.MainOrchestrator), $"{arr[0]}|{arr[1]}");
         }
 
         [FunctionName(nameof(DeleteBlob))]
@@ -48,7 +76,7 @@ namespace SequentialBlobIntegrator
             }
             catch (Exception ex)
             {
-                var r = 0;
+                throw;
             }
         }
 
@@ -61,24 +89,23 @@ namespace SequentialBlobIntegrator
 
                 Response<BlobDownloadResult> result = await blobClient.DownloadContentAsync();
 
-                RootPayload blobpayload = JsonConvert.DeserializeObject<RootPayload>(result.Value.Content.ToString());
-                var rr = result.Value.Content.ToString();
+                IntegrationHttpRequest irequest = JsonConvert.DeserializeObject<IntegrationHttpRequest>(result.Value.Content.ToString());
 
-                HttpResponseMessage resp = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Parse(blobpayload.HttpMethod), blobpayload.Url)
+                HttpResponseMessage resp = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Parse(irequest.HttpMethod), irequest.Url)
                 {
-                    Content = new StringContent(blobpayload.Content, Encoding.UTF8, "application/json")
-                    
+                    Content = new StringContent(irequest.Content, Encoding.UTF8, "application/json")
                 });
+
                 var res = await resp.Content.ReadAsStringAsync();
-                Console.WriteLine("Calling external endpoint: " + resp.StatusCode);// + res.Substring(10));
+
+                log.LogCritical("Calling external endpoint: " + resp.StatusCode + " : " + await resp.Content.ReadAsStringAsync());// + res.Substring(10));
 
                 await Task.Delay(1000);
             }
 
             catch (Exception ex)
             {
-                var r = 0;
-
+                throw;
             }
         }
                
@@ -112,7 +139,7 @@ namespace SequentialBlobIntegrator
                 lastticks = Convert.ToInt64(last.Split('/')[1]);
             }
 
-            log.LogCritical("Get blobs: " + result.Count);
+            log.LogCritical("Get blobs: " + result.Count + " for key: " + key);
 
             return (token, result, lastticks);
         }

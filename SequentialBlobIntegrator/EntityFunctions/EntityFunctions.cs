@@ -6,7 +6,6 @@ namespace SequentialBlobIntegrator
 {
     public class EntityFunctions
     {
-
         [FunctionName(nameof(GlobalConcurrentCount))]
         public static void GlobalConcurrentCount([EntityTrigger] IDurableEntityContext ctx)
         {

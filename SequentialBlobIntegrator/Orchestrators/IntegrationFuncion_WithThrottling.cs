@@ -1,4 +1,3 @@
-using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
@@ -59,11 +58,11 @@ namespace SequentialBlobIntegrator
 
                 (string _, ticks) = await context.CallSubOrchestratorAsync<(string, long)>(nameof(BlobProcessOrchestrator), key, token);
 
-                logger.LogWarning(context.CurrentUtcDateTime.ToString());
+                logger.LogWarning("!!!!!!!!!!!!!!!<<<<<<< DONE >>>>>>>!!!!!!!!!!!!!!!   KEY: " + key);
             }
             catch (Exception ex)
             {
-                int r = 0;
+                throw;
             }
             finally
             {
@@ -84,7 +83,7 @@ namespace SequentialBlobIntegrator
             string token;
             //string trace = "1";
 
-            string globalMaxConcurrent = "MyGlobalLock";
+            string globalMaxConcurrent = "MaxConcurrentOutboundCalls";
 
             EntityId globalcountid;
 

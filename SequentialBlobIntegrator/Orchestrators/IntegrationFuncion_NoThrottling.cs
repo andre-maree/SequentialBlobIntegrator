@@ -1,27 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using SequentialBlobIntegrator.Models;
 
 namespace SequentialBlobIntegrator
 {
     public class IntegrationFuncion_NoThrottling
     {
-        //private BlobContainerClient blobContainerClient;
-        //private HttpClient httpClient;
-
-        //public IntegrationFuncion_NoThrottling(BlobServiceClient _blobServiceClient, IHttpClientFactory httpClientFactory)
-        //{
-        //    blobContainerClient = _blobServiceClient.GetBlobContainerClient(Environment.GetEnvironmentVariable("Container"));
-
-        //    httpClient = httpClientFactory.CreateClient();
-        //}
-
         [Deterministic]
         [FunctionName(nameof(MainOrchestrator))]
         public static async Task MainOrchestrator(
@@ -29,11 +18,14 @@ namespace SequentialBlobIntegrator
         {
             string[] arr = context.InstanceId.Split('|');
             string key = arr[0];
+            long ticks = Convert.ToInt64(arr[1]);
 
             ILogger logger = context.CreateReplaySafeLogger(log);
             logger.LogError(context.CurrentUtcDateTime.ToString());
 
-            EntityId id = new(nameof(EntityFunctions.LockByKey), key);
+            EntityId id = new(nameof(EntityFunctions.LockByKey), key + "|nothrottle");
+
+            bool haslock = false;
 
             try
             {
@@ -41,11 +33,20 @@ namespace SequentialBlobIntegrator
                 {
                     using (await context.LockAsync(id))
                     {
-                        bool islocked = await context.CallEntityAsync<bool>(id, "getlock");
+                        Lock loc = await context.CallEntityAsync<Lock>(id, "getlock");
 
-                        if (!islocked)
+                        if (loc.TicksStamp > ticks)
                         {
-                            await context.CallEntityAsync(id, "lock");
+                            return;
+                        }
+
+                        if (!loc.IsLocked)
+                        {
+                            loc.IsLocked = true;
+
+                            await context.CallEntityAsync(id, "lock", loc);
+
+                            haslock = true;
 
                             break;
                         }
@@ -55,80 +56,63 @@ namespace SequentialBlobIntegrator
                     await context.CreateTimer(deadline, CancellationToken.None);
                 }
 
-                List<string> blobs = new(); 
+                string token = $"{key}/0";
 
                 while (true)
                 {
-                    (bool goon, List<string> outblobs) = await context.CallActivityAsync<(bool, List<string>)>(nameof(BlobFunctions.GetBlobs_ThrottledByKey), (key, 5));
+                    (token, List<string> blobs, ticks) = await context.CallActivityAsync<(string, List<string>, long)>(nameof(BlobFunctions.GetBlobs), token);
 
-                    if(!goon)
+                    if (blobs.Count == 0)
                     {
-                        if(outblobs.Count > 0)
+                        if (string.IsNullOrEmpty(token))
                         {
-                            blobs.AddRange(outblobs);
                             break;
                         }
 
-                        return;
+                        continue;
                     }
 
-                    blobs.AddRange(outblobs);
+                    Task blobtask = null;
+                    bool waitforblob = false;
 
-                    if (blobs.Count >= 5)
+                    foreach (string blob in blobs)
                     {
-                        break;
+                        if (waitforblob)
+                        {
+                            await blobtask;
+                        }
+
+                        await context.CallActivityAsync(nameof(BlobFunctions.CallExternalHttp), blob);
+
+                        waitforblob = true;
+
+                        blobtask = context.CallActivityAsync(nameof(BlobFunctions.DeleteBlob), blob);
                     }
-                }
 
-                Task blobtask = null;
-                bool waitforblob = false;
-
-                foreach (string blob in blobs)
-                {
                     if (waitforblob)
                     {
                         await blobtask;
                     }
 
-                    await context.CallActivityAsync(nameof(BlobFunctions.CallExternalHttp), blob);
-
-                    waitforblob = true;
-
-                    blobtask = context.CallActivityAsync(nameof(BlobFunctions.DeleteBlob), blob);
+                    if (string.IsNullOrEmpty(token))
+                    {
+                        break;
+                    }
                 }
 
-                if (waitforblob)
-                {
-                    await blobtask;
-                }
-
-                logger.LogWarning(context.CurrentUtcDateTime.ToString());
+                logger.LogWarning("!!!!!!!!!!!!!!!<<<<<<< DONE >>>>>>>!!!!!!!!!!!!!!!   KEY: " + key);
             }
             catch (Exception ex)
             {
-
-                int r = 0;
+                throw;
             }
             finally
             {
-                await context.CallEntityAsync(id, "unlock");
+                if (haslock)
+                {
+                    await context.CallEntityAsync(id, "lock", new Lock() { IsLocked = false, TicksStamp = ticks });
+                }
             }
-        }
-
-        [FunctionName("Function1_HttpStart")]
-        public static async Task<HttpResponseMessage> HttpStart(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestMessage req,
-            [DurableClient] IDurableOrchestrationClient starter,
-            ILogger log)
-        {
-
-            string key = "23423423";
-            // Function input comes from the request content.
-            string instanceId = await starter.StartNewAsync("Function1", input: key);
-
-            log.LogInformation("Started orchestration with ID = '{instanceId}'.", instanceId);
-
-            return starter.CreateCheckStatusResponse(req, instanceId);
         }
     }
 }

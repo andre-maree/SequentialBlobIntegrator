@@ -2,15 +2,14 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using System.Collections.Generic;
 using System.Net.Http;
-using System.Net.Http.Json;
 using SequentialBlobIntegrator.Models;
+using Newtonsoft.Json.Linq;
 
 namespace SequentialBlobIntegrator.TestFunctions
 {
@@ -37,13 +36,16 @@ namespace SequentialBlobIntegrator.TestFunctions
             bool togle = false;
             List<Task> li = new();
 
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < 1; i++)
             {
-                TestJsonContent content = new()
+                // create test json data
+                JObject jobject = new()
                 {
-                    Firstname = "Pudding",
-                    Lastname = "McTwinkle"
+                    { "Firstname", "Pudding" },
+                    { "Lastname", "McTwinkle" }
                 };
+
+                // create test row keys
                 string key = string.Empty;
                 if (togle)
                 {
@@ -55,70 +57,35 @@ namespace SequentialBlobIntegrator.TestFunctions
                 }
                 togle = !togle;
 
-                RootPayload rootpayload = new()
-                {
-                    Url = "https://httpbin.org/get",
+                await Task.Delay(1);
+
+                // create a test integration payload
+                IntegrationPayload ipayload = new()
+                {                   
+                    IntegrationHttpRequest = new IntegrationHttpRequest()
+                    {
+                        HttpMethod = "post",
+                        Content = jobject.ToString(Formatting.None),
+                        Url = "https://httpbin.org/post"
+                    },
                     Key = "23423423" + i,
-                    Content = JsonConvert.SerializeObject(content),
-                    TicksStamp = DateTime.Now.Ticks,
-                    HttpMethod = "get"
+                    TicksStamp = DateTime.Now.Ticks
                 };
 
-                li.Add(httpClient.PostAsync("http://localhost:7161/CreateBlob", new StringContent(JsonConvert.SerializeObject(rootpayload))));
+                for (int j = 0; j < 4; j++)
+                {
+                    // call the create bllob endpoint 
+                    li.Add(httpClient.PostAsync("http://localhost:7161/CreateBlob", new StringContent(JsonConvert.SerializeObject(ipayload))));
 
-                await Task.Delay(1000);
+                    await Task.Delay(1000);
 
-                rootpayload.TicksStamp += 1;
-
-                li.Add(httpClient.PostAsync("http://localhost:7161/CreateBlob", new StringContent(JsonConvert.SerializeObject(rootpayload))));
-                await Task.Delay(1000);
-
-                rootpayload.TicksStamp += 1;
-
-                li.Add(httpClient.PostAsync("http://localhost:7161/CreateBlob", new StringContent(JsonConvert.SerializeObject(rootpayload))));
-                await Task.Delay(1000);
-
-                rootpayload.TicksStamp += 1;
-
-                li.Add(httpClient.PostAsync("http://localhost:7161/CreateBlob", new StringContent(JsonConvert.SerializeObject(rootpayload))));
-                await Task.Delay(1000);
-
-                rootpayload.TicksStamp += 1;
-
-                li.Add(httpClient.PostAsync("http://localhost:7161/CreateBlob", new StringContent(JsonConvert.SerializeObject(rootpayload))));
-                await Task.Delay(1000);
-
-                rootpayload.TicksStamp += 1;
-
-                li.Add(httpClient.PostAsync("http://localhost:7161/CreateBlob", new StringContent(JsonConvert.SerializeObject(rootpayload))));
-                await Task.Delay(1000);
+                    ipayload.TicksStamp += 1;
+                }
             }
 
             await Task.WhenAll(li);
 
             return new HttpResponseMessage();
-        }
-
-        [FunctionName(nameof(CreateBlob))]
-        public async Task<HttpResponseMessage> CreateBlob(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestMessage req,
-            [DurableClient] IDurableOrchestrationClient starter,
-            ILogger log)
-        {
-            RootPayload input = await req.Content.ReadFromJsonAsync<RootPayload>();
-
-            string ticks = (input.TicksStamp + 1000000000000000000).ToString();
-
-            string blobname = $"{input.Key}/{ticks}";
-
-            await blobContainerClient.UploadBlobAsync(blobname, BinaryData.FromObjectAsJson(input));
-
-            string content = string.Empty;
-
-            return new HttpResponseMessage()
-            {
-                Content = new StringContent(content)
-            };
         }
     }
 }
