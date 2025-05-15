@@ -11,9 +11,20 @@ namespace SequentialBlobIntegrator
 {
     public class IntegrationFuncion_NoThrottling
     {
+        private readonly RetryOptions retryOptions;
+
+        public IntegrationFuncion_NoThrottling()
+        {
+            retryOptions = new(TimeSpan.FromSeconds(Convert.ToInt32(Environment.GetEnvironmentVariable("RetryFirstIntervalSeconds"))), Convert.ToInt32(Environment.GetEnvironmentVariable("RetryMaxIntervals")))
+            {
+                BackoffCoefficient = Convert.ToDouble(Environment.GetEnvironmentVariable("RetryBackOffCofecient")),
+                MaxRetryInterval = TimeSpan.FromMinutes(Convert.ToInt32(Environment.GetEnvironmentVariable("RetryMaxIntervalMinutes")))
+            };
+        }
+
         [Deterministic]
         [FunctionName(nameof(MainOrchestrator))]
-        public static async Task MainOrchestrator(
+        public async Task MainOrchestrator(
             [OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
             string[] arr = context.InstanceId.Split('|');
@@ -60,7 +71,7 @@ namespace SequentialBlobIntegrator
 
                 while (true)
                 {
-                    (token, List<string> blobs, ticks) = await context.CallActivityAsync<(string, List<string>, long)>(nameof(BlobFunctions.GetBlobs), token);
+                    (token, List<string> blobs, ticks) = await context.CallActivityWithRetryAsync<(string, List<string>, long)>(nameof(BlobFunctions.GetBlobs), retryOptions, token);
 
                     if (blobs.Count == 0)
                     {
@@ -82,11 +93,11 @@ namespace SequentialBlobIntegrator
                             await blobtask;
                         }
 
-                        await context.CallActivityAsync(nameof(BlobFunctions.CallExternalHttp), blob);
+                        await context.CallActivityWithRetryAsync(nameof(BlobFunctions.CallExternalHttp), retryOptions, blob);
 
                         waitforblob = true;
 
-                        blobtask = context.CallActivityAsync(nameof(BlobFunctions.DeleteBlob), blob);
+                        blobtask = context.CallActivityWithRetryAsync(nameof(BlobFunctions.DeleteBlob), retryOptions, blob);
                     }
 
                     if (waitforblob)
@@ -104,6 +115,7 @@ namespace SequentialBlobIntegrator
             }
             catch (Exception ex)
             {
+                // log error
                 throw;
             }
             finally

@@ -11,9 +11,20 @@ namespace SequentialBlobIntegrator
 { 
     public class IntegrationFuncion_WithThrottling
     {
+        private readonly RetryOptions retryOptions;
+
+        public IntegrationFuncion_WithThrottling()
+        {
+            retryOptions = new(TimeSpan.FromSeconds(Convert.ToInt32(Environment.GetEnvironmentVariable("RetryFirstIntervalSeconds"))), Convert.ToInt32(Environment.GetEnvironmentVariable("RetryMaxIntervals")))
+            {
+                BackoffCoefficient = Convert.ToDouble(Environment.GetEnvironmentVariable("RetryBackOffCofecient")),
+                MaxRetryInterval = TimeSpan.FromMinutes(Convert.ToInt32(Environment.GetEnvironmentVariable("RetryMaxIntervalMinutes")))
+            };
+        }
+
         [Deterministic]
         [FunctionName(nameof(MainThrottledOrchestrator))]
-        public static async Task MainThrottledOrchestrator(
+        public async Task MainThrottledOrchestrator(
             [OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
             string[] arr = context.InstanceId.Split('|');
@@ -56,12 +67,13 @@ namespace SequentialBlobIntegrator
                     await context.CreateTimer(deadline, CancellationToken.None);
                 }
 
-                (string _, ticks) = await context.CallSubOrchestratorAsync<(string, long)>(nameof(BlobProcessOrchestrator), key, token);
+                (string _, ticks) = await context.CallSubOrchestratorWithRetryAsync<(string, long)>(nameof(BlobProcessOrchestrator), retryOptions, key, token);
 
                 logger.LogWarning("!!!!!!!!!!!!!!!<<<<<<< DONE >>>>>>>!!!!!!!!!!!!!!!   KEY: " + key);
             }
             catch (Exception ex)
             {
+                // log error
                 throw;
             }
             finally
@@ -101,7 +113,7 @@ namespace SequentialBlobIntegrator
 
                 token = context.GetInput<string>();
 
-                (token, List<string> blobs, lastticks) = await context.CallActivityAsync<(string, List<string>, long)>(nameof(BlobFunctions.GetBlobs), token);
+                (token, List<string> blobs, lastticks) = await context.CallActivityWithRetryAsync<(string, List<string>, long)>(nameof(BlobFunctions.GetBlobs), retryOptions, token);
 
                 if (blobs.Count == 0)
                 {
@@ -138,7 +150,7 @@ namespace SequentialBlobIntegrator
 
                         logger.LogCritical("CONCURRENT ++++++++++++++++++++++++: " + (globalcount + 1));
 
-                        await context.CallActivityAsync(nameof(BlobFunctions.CallExternalHttp), blob);
+                        await context.CallActivityWithRetryAsync(nameof(BlobFunctions.CallExternalHttp), retryOptions, blob);
 
                         DateTime deadline2 = context.CurrentUtcDateTime.Add(TimeSpan.FromSeconds(1));
                         await context.CreateTimer(deadline2, CancellationToken.None);
@@ -146,7 +158,7 @@ namespace SequentialBlobIntegrator
                         await context.CallEntityAsync<int>(globalcountid, "sub");
                         didsubtract = true;
 
-                        await context.CallActivityAsync(nameof(BlobFunctions.DeleteBlob), blob);
+                        await context.CallActivityWithRetryAsync(nameof(BlobFunctions.DeleteBlob), retryOptions, blob);
 
                         break;
                     }
@@ -172,6 +184,7 @@ namespace SequentialBlobIntegrator
                     await context.CallEntityAsync<int>(globalcountid, "sub");
                 }
 
+                // log error
                 throw;
             }
         }

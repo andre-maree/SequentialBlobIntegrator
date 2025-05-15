@@ -35,17 +35,20 @@ namespace SequentialBlobIntegrator.TestFunctions
 
             bool togle = false;
             List<Task> li = new();
+            long ticks = DateTime.Now.Ticks;
 
-            for (int i = 0; i < 1; i++)
+            // loop and create test integration instances
+            for (int i = 0; i < 12; i++)
             {
                 // create test json data
                 JObject jobject = new()
                 {
-                    { "Firstname", "Pudding" },
+                    { "Firstname", "Pudding " + i },
                     { "Lastname", "McTwinkle" }
                 };
 
-                // create test row keys
+                // create test row keys, use this toggle for creating 2 keys,
+                // or create a key for each i counter
                 string key = string.Empty;
                 if (togle)
                 {
@@ -68,19 +71,20 @@ namespace SequentialBlobIntegrator.TestFunctions
                         Content = jobject.ToString(Formatting.None),
                         Url = "https://httpbin.org/post"
                     },
-                    Key = "23423423" + i,
-                    TicksStamp = DateTime.Now.Ticks
+                    Key = "23423423" + i,//key // key or i
+                    TicksStamp = ticks + i
                 };
 
-                for (int j = 0; j < 4; j++)
+                // create some instances for each key
+                for (int j = 0; j < 6; j++)
                 {
                     // call the create bllob endpoint 
-                    li.Add(httpClient.PostAsync("http://localhost:7161/CreateBlob", new StringContent(JsonConvert.SerializeObject(ipayload))));
-
-                    await Task.Delay(1000);
+                    li.Add(httpClient.PostAsync("http://localhost:7161/CreateIntegrationInstance", new StringContent(JsonConvert.SerializeObject(ipayload))));
 
                     ipayload.TicksStamp += 1;
                 }
+
+                await Task.Delay(1000);
             }
 
             await Task.WhenAll(li);
