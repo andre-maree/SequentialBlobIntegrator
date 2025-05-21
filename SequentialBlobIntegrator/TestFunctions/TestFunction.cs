@@ -6,7 +6,6 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using System.Collections.Generic;
 using System.Net.Http;
 using SequentialBlobIntegrator.Models;
 using Newtonsoft.Json.Linq;
@@ -34,11 +33,11 @@ namespace SequentialBlobIntegrator.TestFunctions
             await blobContainerClient.CreateIfNotExistsAsync();
 
             bool togle = false;
-            List<Task> li = new();
+
             long ticks = DateTime.Now.Ticks;
 
             // loop and create test integration instances
-            for (int i = 0; i < 12; i++)
+            for (int i = 0; i < 10; i++)
             {
                 // create test json data
                 JObject jobject = new()
@@ -64,7 +63,7 @@ namespace SequentialBlobIntegrator.TestFunctions
 
                 // create a test integration payload
                 IntegrationPayload ipayload = new()
-                {                   
+                {
                     IntegrationHttpRequest = new IntegrationHttpRequest()
                     {
                         HttpMethod = "post",
@@ -79,15 +78,11 @@ namespace SequentialBlobIntegrator.TestFunctions
                 for (int j = 0; j < 6; j++)
                 {
                     // call the create bllob endpoint 
-                    li.Add(httpClient.PostAsync("http://localhost:7161/CreateIntegrationInstance", new StringContent(JsonConvert.SerializeObject(ipayload))));
+                    await httpClient.PostAsync("http://localhost:7161/CreateIntegrationInstance", new StringContent(JsonConvert.SerializeObject(ipayload)));
 
                     ipayload.TicksStamp += 1;
                 }
-
-                await Task.Delay(1000);
             }
-
-            await Task.WhenAll(li);
 
             return new HttpResponseMessage();
         }

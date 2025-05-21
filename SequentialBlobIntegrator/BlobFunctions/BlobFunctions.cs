@@ -179,7 +179,6 @@ namespace SequentialBlobIntegrator
             }
         }
 
-
         [FunctionName(nameof(DeleteBlob))]
         public async Task DeleteBlob([ActivityTrigger] string blob, ILogger log)
         {
@@ -235,8 +234,9 @@ namespace SequentialBlobIntegrator
             string[] arr = token.Split('/');
             long lastticks = Convert.ToInt64(arr[1]);
             string key = arr[0];
+            int blobBatchSize = Convert.ToInt32(Environment.GetEnvironmentVariable("BlobBatchSize"));
 
-            IAsyncEnumerable<Page<BlobItem>> blobResultSegment = blobContainerClient.GetBlobsAsync(prefix: key + '/').AsPages(token, 5);
+            IAsyncEnumerable<Page<BlobItem>> blobResultSegment = blobContainerClient.GetBlobsAsync(prefix: key + '/').AsPages(token, blobBatchSize);
 
             await foreach (Page<BlobItem> blobPage in blobResultSegment)
             {
@@ -261,90 +261,5 @@ namespace SequentialBlobIntegrator
 
             return (token, result, lastticks);
         }
-
-        [FunctionName(nameof(GetBlobs_ThrottledByKey))]
-        public async Task<(bool, List<string>)> GetBlobs_ThrottledByKey([ActivityTrigger] (string key, int pageSize) input, ILogger log)
-        {
-            List<string> result = [];
-
-            bool goon = true;
-            string token = null;
-
-            do
-            {
-                IAsyncEnumerable<Page<BlobItem>> blobResultSegment = blobContainerClient.GetBlobsAsync(prefix: input.key).AsPages(token, 5);
-                await foreach (Page<BlobItem> blobPage in blobResultSegment)
-                {
-                    foreach (BlobItem blob in blobPage.Values)
-                    {
-                        result.Add(blob.Name);
-                    }
-
-                    if (result.Count >= 5)
-                    {
-                        goon = blobPage.ContinuationToken != null;
-
-                        token = string.Empty;
-
-                        break;
-                    }
-
-                    if (string.IsNullOrEmpty(blobPage.ContinuationToken))
-                    {
-                        goon = false;
-
-                        token = string.Empty;
-
-                        break;
-                    }
-
-                    token = blobPage.ContinuationToken;
-                }
-            }
-            while (!string.IsNullOrEmpty(token));
-
-            log.LogCritical("Get blobs: " + result.Count);
-
-
-            return (goon, result);
-        }
-
-        //[FunctionName(nameof(CheckStatus))]
-        //public async Task<(bool, string)> CheckStatus([ActivityTrigger] (string key, long ticks) input, [DurableClient] IDurableOrchestrationClient starter, ILogger log)
-        //{
-        //    DurableOrchestrationStatus result = await starter.GetStatusAsync(input.key);
-
-        //    if (result == null)
-        //    {
-        //        return (true, input.key + "/0");
-        //    }
-
-        //    //if(result.RuntimeStatus.ToString().Equals("Running"))
-        //    //{
-        //    //    Console.WriteLine("BBBBBBBBBBBBBBBBBLLLLLLLLLLLLLLLLLLLLLLLOOOOOOOOOOOOOOOCCCCCCCCCCCCCCCCCCCCCCKKKKKKKKKKKKKKKKKKKEEEEEEEEEEEEEEEEEEEEEDDDDDDDDDDDDDDDDD");
-
-        //    //    return false;
-        //    //}
-
-
-        //    //if (result.Input.Type == JTokenType.Null)
-        //    //{
-        //    //    Console.WriteLine("BBBBBBBBBBBBBBBBBLLLLLLLLLLLLLLLLLLLLLLLOOOOOOOOOOOOOOOCCCCCCCCCCCCCCCCCCCCCCKKKKKKKKKKKKKKKKKKKEEEEEEEEEEEEEEEEEEEEEDDDDDDDDDDDDDDDDD");
-
-        //    //    return false;
-        //    //}
-        //    string token = result.Input.ToString();
-
-        //    if (Convert.ToInt64(token.Split('/')[1]) >= input.ticks)
-        //    {
-        //        //Console.WriteLine("BBBBBBBBBBBBBBBBBLLLLLLLLLLLLLLLLLLLLLLLOOOOOOOOOOOOOOOCCCCCCCCCCCCCCCCCCCCCCKKKKKKKKKKKKKKKKKKKEEEEEEEEEEEEEEEEEEEEEDDDDDDDDDDDDDDDDD");
-
-        //        return (false, string.Empty);
-        //    }
-
-        //    Console.WriteLine("CCCCCCCAAAAAAAANNNNNNNNNNNNNN RRRRRRRUUUUUUUUUUUUUUUNNNNNNNNNNNNNNNN");
-
-        //    return (true, token);
-        //}
     }
 }
