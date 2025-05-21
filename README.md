@@ -26,7 +26,7 @@ local.settings.json Config:
 
 Use Azure Storage Explorer and Azurerite for local development. Azure Storage Explorer can be downloaded, and Azurite should be included within Visual Sudio.
 
-Simply call [POST] http://localhost:7161/CreateIntegrationInstance with the following object model (included in the Models class):
+Simply call [POST] http://localhost:7161/CreateIntegrationInstance with the following object model (included in the Models class). Look at the TestFunction class how to save the blobs with the needed json payload:
 
 ```csharp
 public class IntegrationPayload()
