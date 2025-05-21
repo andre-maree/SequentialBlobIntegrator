@@ -1,0 +1,15 @@
+{
+    "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_INPROC_NET8_ENABLED": "1",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    "Container": "integration-test", // set the blob container to use
+    "MaxConcurrentOutboundCalls": "5", // max concurrent outbound calls
+    "RetryMaxIntervalMinutes": "5",
+    "RetryFirstIntervalSeconds": "5",
+    "RetryMaxIntervals": "1000",
+    "RetryBackOffCofecient": "1.125",
+    "BlobBatchSize": "5000"
+  }
+}
