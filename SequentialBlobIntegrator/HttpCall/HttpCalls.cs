@@ -13,12 +13,12 @@ using SequentialBlobIntegrator.Models;
 
 namespace SequentialBlobIntegrator
 {
-    public class HttpCall
+    public class HttpCalls
     {
         private BlobContainerClient blobContainerClient;
         private readonly HttpClient httpClient;
 
-        public HttpCall(BlobServiceClient _blobServiceClient, IHttpClientFactory httpClientFactory)
+        public HttpCalls(BlobServiceClient _blobServiceClient, IHttpClientFactory httpClientFactory)
         {
             blobContainerClient = _blobServiceClient.GetBlobContainerClient(Environment.GetEnvironmentVariable("Container"));
 
@@ -46,7 +46,7 @@ namespace SequentialBlobIntegrator
                     throw new HttpRequestException("The call failed with a response code: " + resp.StatusCode);
                 }
 
-                log.LogCritical("Called the external endpoint: " + resp.StatusCode + " : " + await resp.Content.ReadAsStringAsync());// + res.Substring(10));
+                log.LogCritical("Called the external endpoint: " + resp.StatusCode + " : " + await resp.Content.ReadAsStringAsync());
 
                 //await Task.Delay(1000);
             }

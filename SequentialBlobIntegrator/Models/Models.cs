@@ -12,7 +12,6 @@ namespace SequentialBlobIntegrator.Models
     public class IntegrationHttpRequest
     {
         public string HttpRoute { get; set; }
-        public int Timeout { get; set; } = 15;
         public Dictionary<string, string[]> Headers { get; set; }
         public string HttpMethod { get; set; }
         public string Content { get; set; }

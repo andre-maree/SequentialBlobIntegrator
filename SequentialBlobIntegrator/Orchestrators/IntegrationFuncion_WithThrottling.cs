@@ -12,16 +12,11 @@ namespace SequentialBlobIntegrator
 {
     public class IntegrationFuncion_WithThrottling
     {
-        private readonly RetryOptions retryOptions;
-
-        public IntegrationFuncion_WithThrottling()
+        private static readonly RetryOptions retryOptions = new(TimeSpan.FromSeconds(Convert.ToInt32(Environment.GetEnvironmentVariable("RetryFirstIntervalSeconds"))), Convert.ToInt32(Environment.GetEnvironmentVariable("RetryMaxIntervals")))
         {
-            retryOptions = new(TimeSpan.FromSeconds(Convert.ToInt32(Environment.GetEnvironmentVariable("RetryFirstIntervalSeconds"))), Convert.ToInt32(Environment.GetEnvironmentVariable("RetryMaxIntervals")))
-            {
-                BackoffCoefficient = Convert.ToDouble(Environment.GetEnvironmentVariable("RetryBackOffCofecient")),
-                MaxRetryInterval = TimeSpan.FromMinutes(Convert.ToInt32(Environment.GetEnvironmentVariable("RetryMaxIntervalMinutes")))
-            };
-        }
+            BackoffCoefficient = Convert.ToDouble(Environment.GetEnvironmentVariable("RetryBackOffCofecient")),
+            MaxRetryInterval = TimeSpan.FromMinutes(Convert.ToInt32(Environment.GetEnvironmentVariable("RetryMaxIntervalMinutes")))
+        };
 
         [Deterministic]
         [FunctionName(nameof(MainThrottledOrchestrator))]
@@ -70,13 +65,16 @@ namespace SequentialBlobIntegrator
                 }
 
                 string globalMaxConcurrent = "MaxConcurrentOutboundCalls";
+
                 if (!int.TryParse(Environment.GetEnvironmentVariable(globalMaxConcurrent), out int maxparallel))
                 {
                     maxparallel = 5;
+
                     logger.LogWarning($"Config setting '{globalMaxConcurrent}' not found, defaulting to 5 max concurrent.");
                 }
 
                 globalcountid = new(nameof(EntityFunctions.GlobalConcurrentCount), globalMaxConcurrent);
+
                 int globalcount;
 
                 while (true)
@@ -87,13 +85,14 @@ namespace SequentialBlobIntegrator
 
                         if (globalcount >= maxparallel)
                         {
-                            DateTime deadline = context.CurrentUtcDateTime.Add(TimeSpan.FromSeconds(5));
+                            DateTime deadline = context.CurrentUtcDateTime.Add(TimeSpan.FromSeconds(10));
                             await context.CreateTimer(deadline, CancellationToken.None);
 
                             continue;
                         }
 
                         await context.CallEntityAsync(globalcountid, "add", globalcount + 1);
+
                         didadd = true;
                     }
 
@@ -142,6 +141,7 @@ namespace SequentialBlobIntegrator
                 if (!int.TryParse(Environment.GetEnvironmentVariable(globalMaxConcurrent), out int maxparallel))
                 {
                     maxparallel = 5;
+
                     logger.LogWarning($"Config setting '{globalMaxConcurrent}' not found, defaulting to 5 max concurrent.");
                 }
 
@@ -166,7 +166,9 @@ namespace SequentialBlobIntegrator
 
                 foreach (string blob in blobs)
                 {
-                    await context.CallActivityWithRetryAsync(nameof(HttpCall.CallExternalHttp), retryOptions, blob);
+                    // add another CallActivityWithRetryAsync here to get an authentication token if needed
+
+                    await context.CallActivityWithRetryAsync(nameof(HttpCalls.CallExternalHttp), retryOptions, blob);
 
                     await context.CallActivityWithRetryAsync(nameof(BlobFunctions.DeleteBlob), retryOptions, blob);
                 }

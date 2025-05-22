@@ -11,16 +11,11 @@ namespace SequentialBlobIntegrator
 {
     public class IntegrationFuncion_NoThrottling
     {
-        private readonly RetryOptions retryOptions;
-
-        public IntegrationFuncion_NoThrottling()
+        private static readonly RetryOptions retryOptions = new(TimeSpan.FromSeconds(Convert.ToInt32(Environment.GetEnvironmentVariable("RetryFirstIntervalSeconds"))), Convert.ToInt32(Environment.GetEnvironmentVariable("RetryMaxIntervals")))
         {
-            retryOptions = new(TimeSpan.FromSeconds(Convert.ToInt32(Environment.GetEnvironmentVariable("RetryFirstIntervalSeconds"))), Convert.ToInt32(Environment.GetEnvironmentVariable("RetryMaxIntervals")))
-            {
-                BackoffCoefficient = Convert.ToDouble(Environment.GetEnvironmentVariable("RetryBackOffCofecient")),
-                MaxRetryInterval = TimeSpan.FromMinutes(Convert.ToInt32(Environment.GetEnvironmentVariable("RetryMaxIntervalMinutes")))
-            };
-        }
+            BackoffCoefficient = Convert.ToDouble(Environment.GetEnvironmentVariable("RetryBackOffCofecient")),
+            MaxRetryInterval = TimeSpan.FromMinutes(Convert.ToInt32(Environment.GetEnvironmentVariable("RetryMaxIntervalMinutes")))
+        };
 
         [Deterministic]
         [FunctionName(nameof(MainOrchestrator))]
@@ -93,7 +88,7 @@ namespace SequentialBlobIntegrator
                             await blobtask;
                         }
 
-                        await context.CallActivityWithRetryAsync(nameof(HttpCall.CallExternalHttp), retryOptions, blob);
+                        await context.CallActivityWithRetryAsync(nameof(HttpCalls.CallExternalHttp), retryOptions, blob);
 
                         waitforblob = true;
 

@@ -6,11 +6,12 @@
     "FUNCTIONS_WORKER_RUNTIME": "dotnet",
     "Container": "integration-test", // set the blob container to use
     "MaxConcurrentOutboundCalls": "5", // max concurrent outbound calls
+    "BlobBatchSize": "5000", // page size of the call to get blob names
+    "HttpBinBaseUrl": "https://httpbin.org", // test base outbound url for dev purposes
+    // retries
     "RetryMaxIntervalMinutes": "5",
     "RetryFirstIntervalSeconds": "5",
     "RetryMaxIntervals": "1000",
-    "RetryBackOffCofecient": "1.125",
-    "BlobBatchSize": "5000",
-    "HttpBinBaseUrl": "https://httpbin.org"
+    "RetryBackOffCofecient": "1.125"
   }
 }

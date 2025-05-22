@@ -37,7 +37,7 @@ namespace SequentialBlobIntegrator.TestFunctions
             long ticks = DateTime.Now.Ticks;
 
             // loop and create test integration instances
-            for (int i = 0; i < 1; i++)
+            for (int i = 0; i < 10; i++)
             {
                 // create test json data
                 JObject jobject = new()
@@ -76,9 +76,9 @@ namespace SequentialBlobIntegrator.TestFunctions
                 };
 
                 // create some instances for each key
-                for (int j = 0; j < 1; j++)
+                for (int j = 0; j < 6; j++)
                 {
-                    // call the create bllob endpoint 
+                    // call the create blob endpoint 
                     await httpClient.PostAsync("http://localhost:7161/CreateIntegrationInstance", new StringContent(JsonConvert.SerializeObject(ipayload)));
 
                     ipayload.TicksStamp += 1;
