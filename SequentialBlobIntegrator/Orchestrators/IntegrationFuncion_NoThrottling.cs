@@ -18,8 +18,8 @@ namespace SequentialBlobIntegrator
         };
 
         [Deterministic]
-        [FunctionName(nameof(MainOrchestrator))]
-        public async Task MainOrchestrator(
+        [FunctionName(nameof(MainOrchestratorNoThrottling))]
+        public async Task MainOrchestratorNoThrottling(
             [OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
         {
             string[] arr = context.InstanceId.Split('|');

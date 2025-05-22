@@ -8,7 +8,7 @@
       "maxDequeueCount": 1000
     },
     "blobs": {
-      "maxDegreeOfParallelism": 4,
+      "maxDegreeOfParallelism": 10,
       "poisonBlobThreshold": 1
     },
     "durableTask": {
@@ -19,7 +19,7 @@
         "controlQueueBufferThreshold": 256,
         "controlQueueVisibilityTimeout": "00:01:00",
         "maxQueuePollingInterval": "00:00:10",
-        "partitionCount": 1,
+        "partitionCount": 4,
         "workItemQueueVisibilityTimeout": "00:00:10"
       },
       "maxConcurrentActivityFunctions": 10,

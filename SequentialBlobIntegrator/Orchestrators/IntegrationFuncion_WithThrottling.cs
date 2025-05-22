@@ -132,18 +132,9 @@ namespace SequentialBlobIntegrator
             string token;
             //string trace = "1";
 
-            string globalMaxConcurrent = "MaxConcurrentOutboundCalls";
-
             try
             {
                 ILogger logger = context.CreateReplaySafeLogger(log);
-
-                if (!int.TryParse(Environment.GetEnvironmentVariable(globalMaxConcurrent), out int maxparallel))
-                {
-                    maxparallel = 5;
-
-                    logger.LogWarning($"Config setting '{globalMaxConcurrent}' not found, defaulting to 5 max concurrent.");
-                }
 
                 token = context.GetInput<string>();
 

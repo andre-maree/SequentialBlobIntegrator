@@ -59,8 +59,6 @@ namespace SequentialBlobIntegrator.TestFunctions
                 }
                 togle = !togle;
 
-                await Task.Delay(1);
-
                 // create a test integration payload
                 IntegrationPayload ipayload = new()
                 {
@@ -72,16 +70,17 @@ namespace SequentialBlobIntegrator.TestFunctions
                         //HttpRoute = "/TestHttpCall"
                     },
                     Key = "23423423" + i,//key // key or i
-                    TicksStamp = ticks + i
                 };
 
                 // create some instances for each key
                 for (int j = 0; j < 6; j++)
                 {
+                    ipayload.TicksStamp = DateTime.UtcNow.Ticks;
+
                     // call the create blob endpoint 
                     await httpClient.PostAsync("http://localhost:7161/CreateIntegrationInstance", new StringContent(JsonConvert.SerializeObject(ipayload)));
 
-                    ipayload.TicksStamp += 1;
+                    await Task.Delay(1000);
                 }
             }
 

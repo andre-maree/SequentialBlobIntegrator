@@ -62,8 +62,8 @@ namespace SequentialBlobIntegrator
             };
         }
 
-        [FunctionName("BlobTriggerCSharp")]
-        public async Task Run([BlobTrigger("%Container%/{name}")] string data, string name, [DurableClient] IDurableOrchestrationClient starter,
+        [FunctionName(nameof(BlobTrigger))]
+        public async Task BlobTrigger([BlobTrigger("%Container%/{name}")] string data, string name, [DurableClient] IDurableOrchestrationClient starter,
             ILogger log)
         {
             string[] arr = name.Split('/');
@@ -81,6 +81,10 @@ namespace SequentialBlobIntegrator
                 jsonObject.BlobName = name;
                 jsonObject.IntegrationHttpRequest = data;
 
+                string error = jsonObject.ToString();
+
+                log.LogError(error);
+
                 await blobContainerClient.DeleteBlobIfExistsAsync(name);
 
                 return;
@@ -95,6 +99,10 @@ namespace SequentialBlobIntegrator
                 jsonObject.BlobName = name;
                 jsonObject.IntegrationHttpRequest = data;
 
+                string error = jsonObject.ToString();
+
+                log.LogError(error);
+
                 await blobContainerClient.DeleteBlobIfExistsAsync(name);
 
                 return;
@@ -106,7 +114,7 @@ namespace SequentialBlobIntegrator
                 await starter.StartNewAsync(nameof(IntegrationFuncion_WithThrottling.MainThrottledOrchestrator), $"{arr[0]}|{arr[1]}");
 
                 // with no throttling
-                //await starter.StartNewAsync(nameof(IntegrationFuncion_NoThrottling.MainOrchestrator), $"{arr[0]}|{arr[1]}");
+                //await starter.StartNewAsync(nameof(IntegrationFuncion_NoThrottling.MainOrchestratorNoThrottling), $"{arr[0]}|{arr[1]}");
             }
             catch (Exception ex)
             {
