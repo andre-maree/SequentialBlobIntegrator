@@ -93,7 +93,7 @@ namespace SequentialBlobIntegrator
                             await blobtask;
                         }
 
-                        await context.CallActivityWithRetryAsync(nameof(BlobFunctions.CallExternalHttp), retryOptions, blob);
+                        await context.CallActivityWithRetryAsync(nameof(HttpCall.CallExternalHttp), retryOptions, blob);
 
                         waitforblob = true;
 

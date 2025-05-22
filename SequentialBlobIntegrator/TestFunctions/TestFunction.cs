@@ -37,7 +37,7 @@ namespace SequentialBlobIntegrator.TestFunctions
             long ticks = DateTime.Now.Ticks;
 
             // loop and create test integration instances
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 1; i++)
             {
                 // create test json data
                 JObject jobject = new()
@@ -68,14 +68,15 @@ namespace SequentialBlobIntegrator.TestFunctions
                     {
                         HttpMethod = "post",
                         Content = jobject.ToString(Formatting.None),
-                        Url = "https://httpbin.org/post"
+                        HttpRoute = "/post"
+                        //HttpRoute = "/TestHttpCall"
                     },
                     Key = "23423423" + i,//key // key or i
                     TicksStamp = ticks + i
                 };
 
                 // create some instances for each key
-                for (int j = 0; j < 6; j++)
+                for (int j = 0; j < 1; j++)
                 {
                     // call the create bllob endpoint 
                     await httpClient.PostAsync("http://localhost:7161/CreateIntegrationInstance", new StringContent(JsonConvert.SerializeObject(ipayload)));
@@ -85,6 +86,20 @@ namespace SequentialBlobIntegrator.TestFunctions
             }
 
             return new HttpResponseMessage();
+        }
+
+        [FunctionName("TestHttpCall")]
+        public async Task<HttpResponseMessage> TestHttpCall(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequestMessage req,
+            [DurableClient] IDurableOrchestrationClient starter,
+            ILogger log)
+        {
+            await Task.Delay(1000);
+
+            return new HttpResponseMessage()
+            {
+                Content = new StringContent( await req.Content.ReadAsStringAsync())
+            };
         }
     }
 }

@@ -10,6 +10,7 @@
     "RetryFirstIntervalSeconds": "5",
     "RetryMaxIntervals": "1000",
     "RetryBackOffCofecient": "1.125",
-    "BlobBatchSize": "5000"
+    "BlobBatchSize": "5000",
+    "HttpBinBaseUrl": "https://httpbin.org"
   }
 }

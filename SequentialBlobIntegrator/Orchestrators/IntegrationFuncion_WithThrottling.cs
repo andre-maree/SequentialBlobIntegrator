@@ -166,7 +166,7 @@ namespace SequentialBlobIntegrator
 
                 foreach (string blob in blobs)
                 {
-                    await context.CallActivityWithRetryAsync(nameof(BlobFunctions.CallExternalHttp), retryOptions, blob);
+                    await context.CallActivityWithRetryAsync(nameof(HttpCall.CallExternalHttp), retryOptions, blob);
 
                     await context.CallActivityWithRetryAsync(nameof(BlobFunctions.DeleteBlob), retryOptions, blob);
                 }

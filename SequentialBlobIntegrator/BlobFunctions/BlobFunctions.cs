@@ -10,7 +10,6 @@ using System.Net.Http;
 using Azure.Storage.Blobs.Models;
 using Azure;
 using Newtonsoft.Json;
-using System.Text;
 using SequentialBlobIntegrator.Models;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using System.Net.Http.Json;
@@ -24,14 +23,10 @@ namespace SequentialBlobIntegrator
     public class BlobFunctions
     {
         private BlobContainerClient blobContainerClient;
-        private readonly HttpClient httpClient;
-        private readonly BlobClient blobClient;
 
-        public BlobFunctions(BlobServiceClient _blobServiceClient, IHttpClientFactory httpClientFactory)
+        public BlobFunctions(BlobServiceClient _blobServiceClient)
         {
             blobContainerClient = _blobServiceClient.GetBlobContainerClient(Environment.GetEnvironmentVariable("Container"));
-
-            httpClient = httpClientFactory.CreateClient();
         }
 
         [FunctionName(nameof(CreateIntegrationInstance))]
@@ -83,21 +78,6 @@ namespace SequentialBlobIntegrator
             {
                 dynamic jsonObject = new JObject();
                 jsonObject.Error = "IntegrationHttpRequest json parsing error";
-                jsonObject.BlobName = name;
-                jsonObject.IntegrationHttpRequest = data;
-
-                await blobContainerClient.DeleteBlobIfExistsAsync(name);
-
-                return;
-            }
-
-            bool validUrl = Uri.TryCreate(irequest.Url, UriKind.Absolute, out Uri uriResult)
-                && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
-
-            if (!validUrl)
-            {
-                dynamic jsonObject = new JObject();
-                jsonObject.Error = "invalid url error";
                 jsonObject.BlobName = name;
                 jsonObject.IntegrationHttpRequest = data;
 
@@ -188,38 +168,6 @@ namespace SequentialBlobIntegrator
 
                 log.LogError("Deleted blob: " + blob);
             }
-            catch (Exception ex)
-            {
-                throw;
-            }
-        }
-
-        [FunctionName(nameof(CallExternalHttp))]
-        public async Task CallExternalHttp([ActivityTrigger] string blobname, ILogger log)
-        {
-            try
-            {
-                BlobClient blobClient = blobContainerClient.GetBlobClient(blobname);
-
-                Response<BlobDownloadResult> result = await blobClient.DownloadContentAsync();
-
-                IntegrationHttpRequest irequest = JsonConvert.DeserializeObject<IntegrationHttpRequest>(result.Value.Content.ToString());
-
-                HttpResponseMessage resp = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Parse(irequest.HttpMethod), irequest.Url)
-                {
-                    Content = new StringContent(irequest.Content, Encoding.UTF8, "application/json")
-                });
-
-                if (!resp.IsSuccessStatusCode)
-                {
-                    throw new HttpRequestException("The call failed with a response code: " + resp.StatusCode);
-                }
-
-                log.LogCritical("Called the external endpoint: " + resp.StatusCode + " : " + await resp.Content.ReadAsStringAsync());// + res.Substring(10));
-
-                //await Task.Delay(1000);
-            }
-
             catch (Exception ex)
             {
                 throw;

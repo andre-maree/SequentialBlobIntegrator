@@ -150,7 +150,7 @@ namespace SequentialBlobIntegrator
 
                         logger.LogCritical("CONCURRENT ++++++++++++++++++++++++: " + (globalcount + 1));
 
-                        await context.CallActivityWithRetryAsync(nameof(BlobFunctions.CallExternalHttp), retryOptions, blob);
+                        await context.CallActivityWithRetryAsync(nameof(HttpCall.CallExternalHttp), retryOptions, blob);
 
                         DateTime deadline2 = context.CurrentUtcDateTime.Add(TimeSpan.FromSeconds(1));
                         await context.CreateTimer(deadline2, CancellationToken.None);
