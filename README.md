@@ -22,7 +22,7 @@ local.settings.json Config:
 "Container": "integration-test", // set the blob container to use
 "MaxConcurrentOutboundCalls": "5", // max concurrent outbound calls
 "BlobBatchSize": "5000", // page size of the call to get blob names
-"HttpBinBaseUrl": "https://httpbin.org", // test base outbound url for dev purposes
+"HttpBinBaseUrl": "https://httpbin.org", // test outbound base url for dev purposes
 // retries
 "RetryMaxIntervalMinutes": "5",
 "RetryFirstIntervalSeconds": "5",
@@ -42,6 +42,7 @@ public class IntegrationPayload()
     public IntegrationHttpRequest IntegrationHttpRequest { get; set; }
 
 }
+
 public class IntegrationHttpRequest
 {
     public string HttpRoute { get; set; }
