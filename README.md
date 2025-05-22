@@ -1,6 +1,8 @@
 # Sequential Blob Integration Function App
 
-This C# project can be used for integration. Sequential operations (creates, updates, and deletes) are enforced by uploading json payloads to blobs within transactions. No ServiceBus queues are needed (for first-in-first-out), as long as the blob is saved with a ticks timestamp for its name within an originating transaction. For example, when outbound integration is needed for D365 CRM, a plugin can run with a synchronous post-operation that saves a blob within the transaction for the row create, update, or delete. This means that the blobs will be ordered correctly sequentially by name. All that the the D365 plugin must do is to upload the blob with the payload with the correct name: {key}/{ticks}. An Azure Function blob trigger will start a Durable Function that will process the blobs sequentially per key.
+This C# project can be used for integration. Sequential operations (creates, updates, and deletes) are enforced by uploading json payloads to blobs within transactions. No ServiceBus queues are needed (for first-in-first-out), as long as the blob is saved with a ticks timestamp for its name within an originating transaction. For example, when outbound integration is needed for PowerApps and D365 CRM, a plugin can run with a synchronous post-operation that saves a blob within the transaction for the row create, update, or delete. This means that the blobs will be ordered correctly sequentially by name. All that the the D365 plugin must do is to upload the blob with the payload with the correct name: {key}/{ticks}. An Azure Function blob trigger will start a Durable Function that will process the blobs sequentially per key.
+
+This (SequentialBlobIntegrator) is an alternative to using ServiceBus. ServiceBus pricing is tiered. SequentialBlobIntegrator pricing is pay-as-you-go, cheap serverless FAAS pricing. ServiceBus is a good option, but this project shows that first-in-first-out processing is possible by using Durable Functions with no ServiceBus. 
 
 This will also work for creates, updates, and deletes in MS SQL by saving the blobs within transactions. For a MS SQL solution, use a code based transaction and call a stored procedure or in-line sql. If a sequential processing order is not required, then no transaction is needed.
 
@@ -17,11 +19,13 @@ local.settings.json Config:
 ```json
 "Container": "integration-test", // set the blob container to use
 "MaxConcurrentOutboundCalls": "5", // max concurrent outbound calls
+"BlobBatchSize": "5000", // page size of the call to get blob names
+"HttpBinBaseUrl": "https://httpbin.org", // test base outbound url for dev purposes
+// retries
 "RetryMaxIntervalMinutes": "5",
 "RetryFirstIntervalSeconds": "5",
 "RetryMaxIntervals": "1000",
-"RetryBackOffCofecient": "1.125",
-"BlobBatchSize": "5000"
+"RetryBackOffCofecient": "1.125"
 ```
 
 Use Azure Storage Explorer and Azurerite for local development. Azure Storage Explorer can be downloaded, and Azurite should be included within Visual Sudio.
@@ -38,11 +42,9 @@ public class IntegrationPayload()
 }
 public class IntegrationHttpRequest
 {
-    public string Url { get; set; }
-    public int Timeout { get; set; } = 15;
+    public string HttpRoute { get; set; }
     public Dictionary<string, string[]> Headers { get; set; }
     public string HttpMethod { get; set; }
     public string Content { get; set; }
-    public bool PollIf202 { get; set; }
 }
 ```
