@@ -43,7 +43,7 @@ namespace SequentialBlobIntegrator
 
                         token = $"{key}/{loc.TicksStamp}";
 
-                        if (loc.TicksStamp > ticks)
+                        if (loc.TicksStamp >= ticks)
                         {
                             return;
                         }
