@@ -17,11 +17,13 @@ local.settings.json Config:
 ```json
 "Container": "integration-test", // set the blob container to use
 "MaxConcurrentOutboundCalls": "5", // max concurrent outbound calls
+"BlobBatchSize": "5000", // page size of the call to get blob names
+"HttpBinBaseUrl": "https://httpbin.org", // test base outbound url for dev purposes
+// retries
 "RetryMaxIntervalMinutes": "5",
 "RetryFirstIntervalSeconds": "5",
 "RetryMaxIntervals": "1000",
-"RetryBackOffCofecient": "1.125",
-"BlobBatchSize": "5000"
+"RetryBackOffCofecient": "1.125"
 ```
 
 Use Azure Storage Explorer and Azurerite for local development. Azure Storage Explorer can be downloaded, and Azurite should be included within Visual Sudio.
@@ -38,11 +40,9 @@ public class IntegrationPayload()
 }
 public class IntegrationHttpRequest
 {
-    public string Url { get; set; }
-    public int Timeout { get; set; } = 15;
+    public string HttpRoute { get; set; }
     public Dictionary<string, string[]> Headers { get; set; }
     public string HttpMethod { get; set; }
     public string Content { get; set; }
-    public bool PollIf202 { get; set; }
 }
 ```
