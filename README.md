@@ -15,8 +15,6 @@ Functionality include:
 
 To get started locally, run the function app and call http://localhost:7161/testFunction1_HttpStart. This will save some blobs and execute them sequentially and call the test external endpoint https://httpbin.org/post. This endpoint is good for testing, because it will sometimes return with a failed http status code, and this is good to test that the retries are working.
 
-NB: There is known issue with the Azure Function blob trigger in the local development environment with Azurite. Sometimes the blob trigger will be delayed when stressed tested locally. I have seen this issue locally, but eventually the blob trigger will run. This is not an issue when deployed to Azure.
-
 local.settings.json Config:
 ```json
 "Container": "integration-test", // set the blob container to use
