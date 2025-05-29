@@ -50,7 +50,17 @@ namespace SequentialBlobIntegrator
 
                 //await Task.Delay(1000);
             }
-
+            catch (Azure.RequestFailedException e)
+            {
+                if (e.ErrorCode.Equals("BlobNotFound"))
+                {
+                    // log blob not found
+                }
+                else
+                {
+                    throw;
+                }
+            }
             catch (Exception ex)
             {
                 throw;

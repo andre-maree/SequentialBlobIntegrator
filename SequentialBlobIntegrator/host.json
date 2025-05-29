@@ -13,7 +13,7 @@
     },
     "durableTask": {
       "logReplayEvents": "false",
-      "hubName": "DurableTimerTaskHub4",
+      "hubName": "SequentialBlobIntegrator",
       "storageProvider": {
         "controlQueueBatchSize": 32,
         "controlQueueBufferThreshold": 256,

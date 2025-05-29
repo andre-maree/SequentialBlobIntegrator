@@ -13,8 +13,10 @@ namespace SequentialBlobIntegrator
             {
                 case "add":
 
-                    int count = ctx.GetInput<int>();
-                    ctx.SetState(count);
+                    //int count = ctx.GetInput<int>();
+                    int c = ctx.GetState<int>();
+                    c = c + 1;
+                    ctx.SetState(c);
 
                     break;
 
@@ -29,7 +31,8 @@ namespace SequentialBlobIntegrator
 
                 case "get":
 
-                    ctx.Return(ctx.GetState<int>());
+                    int state = ctx.GetState<int>();
+                    ctx.Return(state);
 
                     break;
             }

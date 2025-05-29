@@ -73,8 +73,9 @@ namespace SequentialBlobIntegrator.TestFunctions
                 };
 
                 // create some instances for each key
-                for (int j = 0; j < 6; j++)
+                for (int j = 0; j < 5; j++)
                 {
+                    //ipayload.Key = "23423423";
                     ipayload.TicksStamp = DateTime.UtcNow.Ticks;
 
                     // call the create blob endpoint 

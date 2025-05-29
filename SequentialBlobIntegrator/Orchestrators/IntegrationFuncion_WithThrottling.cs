@@ -12,6 +12,8 @@ namespace SequentialBlobIntegrator
 {
     public class IntegrationFuncion_WithThrottling
     {
+        private static readonly int MaxConcurrent = Convert.ToInt32(Environment.GetEnvironmentVariable("MaxConcurrentOutboundCalls"));
+
         private static readonly RetryOptions retryOptions = new(TimeSpan.FromSeconds(Convert.ToInt32(Environment.GetEnvironmentVariable("RetryFirstIntervalSeconds"))), Convert.ToInt32(Environment.GetEnvironmentVariable("RetryMaxIntervals")))
         {
             BackoffCoefficient = Convert.ToDouble(Environment.GetEnvironmentVariable("RetryBackOffCofecient")),
@@ -32,6 +34,7 @@ namespace SequentialBlobIntegrator
             bool haslock = false;
             long ticks = Convert.ToInt64(arr[1]);
             EntityId globalcountid;
+            int loopcount = 0;
 
             try
             {
@@ -60,22 +63,18 @@ namespace SequentialBlobIntegrator
                         }
                     }
 
-                    DateTime deadline = context.CurrentUtcDateTime.Add(TimeSpan.FromSeconds(10));
+                    DateTime deadline = context.CurrentUtcDateTime.Add(TimeSpan.FromSeconds(10 + loopcount));
                     await context.CreateTimer(deadline, CancellationToken.None);
+
+                    loopcount = loopcount > 50 ? 50 : loopcount += 5;
                 }
 
                 string globalMaxConcurrent = "MaxConcurrentOutboundCalls";
 
-                if (!int.TryParse(Environment.GetEnvironmentVariable(globalMaxConcurrent), out int maxparallel))
-                {
-                    maxparallel = 5;
-
-                    logger.LogWarning($"Config setting '{globalMaxConcurrent}' not found, defaulting to 5 max concurrent.");
-                }
-
                 globalcountid = new(nameof(EntityFunctions.GlobalConcurrentCount), globalMaxConcurrent);
 
                 int globalcount;
+                loopcount = 0;
 
                 while (true)
                 {
@@ -83,22 +82,22 @@ namespace SequentialBlobIntegrator
                     {
                         globalcount = await context.CallEntityAsync<int>(globalcountid, "get");
 
-                        if (globalcount >= maxparallel)
+                        if (globalcount < MaxConcurrent)
                         {
-                            DateTime deadline = context.CurrentUtcDateTime.Add(TimeSpan.FromSeconds(10));
-                            await context.CreateTimer(deadline, CancellationToken.None);
+                            await context.CallEntityAsync(globalcountid, "add", globalcount + 1);
 
-                            continue;
+                            didadd = true;
+
+                            logger.LogCritical("CONCURRENT ++++++++++++++++++++++++: " + (globalcount + 1));
+
+                            break;
                         }
-
-                        await context.CallEntityAsync(globalcountid, "add", globalcount + 1);
-
-                        didadd = true;
                     }
 
-                    logger.LogCritical("CONCURRENT ++++++++++++++++++++++++: " + (globalcount + 1));
-
-                    break;
+                    DateTime deadline = context.CurrentUtcDateTime.Add(TimeSpan.FromSeconds(10 + loopcount));
+                    await context.CreateTimer(deadline, CancellationToken.None); 
+                    
+                    loopcount = loopcount > 50 ? 50 : loopcount += 5;
                 }
 
                 (string _, ticks) = await context.CallSubOrchestratorWithRetryAsync<(string, long)>(nameof(BlobProcessOrchestrator), retryOptions, key, token);
@@ -116,10 +115,11 @@ namespace SequentialBlobIntegrator
                 {
                     if(didadd)
                     {
-                        await context.CallEntityAsync<int>(globalcountid, "sub");
+                        context.SignalEntity(globalcountid, "sub");
                     }
 
-                    await context.CallEntityAsync(id, "lock", new Lock() { IsLocked = false, TicksStamp = ticks });
+                    context.SignalEntity(id, "lock", new Lock() { IsLocked = false, TicksStamp = ticks });
+                    //await context.CallEntityAsync(id, "lock", new Lock() { IsLocked = false, TicksStamp = ticks });
                 }
             }
         }
@@ -130,6 +130,8 @@ namespace SequentialBlobIntegrator
         {
             long lastticks = 0;
             string token;
+            bool didlockupdate = false;
+            string key = string.Empty;
             //string trace = "1";
 
             try
@@ -147,13 +149,19 @@ namespace SequentialBlobIntegrator
                         context.ContinueAsNew(token);
                         //trace += "2";
                     }
+
                     //trace += "3";
                     return (token, lastticks);
                 }
 
                 string[] arr = blobs.Last().Split('/');
 
-                await context.CallEntityAsync(new EntityId(nameof(EntityFunctions.LockByKey), arr[0]), "lock", new Lock() { IsLocked = true, TicksStamp = Convert.ToInt64(arr[1]) });
+                if (blobs.Count > 1)
+                {
+                    await context.CallEntityAsync(new EntityId(nameof(EntityFunctions.LockByKey), arr[0]), "lock", new Lock() { IsLocked = true, TicksStamp = lastticks });
+                    key = arr[0];
+                    didlockupdate = true;
+                }
 
                 foreach (string blob in blobs)
                 {
@@ -179,6 +187,10 @@ namespace SequentialBlobIntegrator
             }
             catch (Exception ex)
             {
+                if(didlockupdate)
+                {
+                    await context.CallEntityAsync(new EntityId(nameof(EntityFunctions.LockByKey), key), "lock", new Lock() { IsLocked = true, TicksStamp = 0 });
+                }
                 // log error
                 throw;
             }

@@ -144,9 +144,9 @@ namespace SequentialBlobIntegrator
             }
         }
 
-        [FunctionName("BlobPoisonQueueTrigger")]
+        [FunctionName(nameof(BlobPoisonQueueTrigger))]
         public async Task BlobPoisonQueueTrigger(
-    [QueueTrigger("webjobs-blobtrigger-poison")] QueueMessage myQueueItem, [DurableClient] IDurableOrchestrationClient starter, ILogger log)
+    [QueueTrigger("webjobs-blobtrigger-poison")] QueueMessage myQueueItem, [DurableClient] IDurableOrchestrationClient starter)
         {
             try
             {
@@ -172,9 +172,20 @@ namespace SequentialBlobIntegrator
         {
             try
             {
-                await blobContainerClient.DeleteBlobIfExistsAsync(blob);
+                await blobContainerClient.DeleteBlobAsync(blob);
 
                 log.LogError("Deleted blob: " + blob);
+            }
+            catch (Azure.RequestFailedException e)
+            {
+                if(e.ErrorCode.Equals("BlobNotFound"))
+                {
+                    // log blob not found
+                }
+                else
+                {
+                    throw;
+                }
             }
             catch (Exception ex)
             {
